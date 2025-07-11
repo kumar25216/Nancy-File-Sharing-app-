@@ -19,9 +19,9 @@ dependencies:
   provider: ^6.1.1
   path_provider: ^2.1.2
   flutter_nearby_connections:
-  git:
-    url: https://github.com/open-sorcerer/flutter_nearby_connections.git
-    ref: namespace-fix
+    git:
+      url: https://github.com/open-sorcerer/flutter_nearby_connections.git
+      ref: namespace-fix
 
 dev_dependencies:
   flutter_test:
