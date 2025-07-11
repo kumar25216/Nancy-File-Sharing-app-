@@ -3,11 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import '../controllers/gesture_controller.dart';
 import '../services/pairing_manager.dart';
+import 'transfer_progress_screen.dart';
+import 'dart:io';
 
 class GestureScanScreen extends StatefulWidget {
   final String? incomingPayload;
 
-  GestureScanScreen({this.incomingPayload});
+  const GestureScanScreen({this.incomingPayload});
 
   @override
   _GestureScanScreenState createState() => _GestureScanScreenState();
@@ -16,6 +18,7 @@ class GestureScanScreen extends StatefulWidget {
 class _GestureScanScreenState extends State<GestureScanScreen> {
   late VideoPlayerController _controller;
   bool isFileIncoming = false;
+  bool hasHandled = false;
 
   @override
   void initState() {
@@ -28,21 +31,31 @@ class _GestureScanScreenState extends State<GestureScanScreen> {
         _controller.play();
       });
 
-    // Listen for fist open after pairing data exists
+    // Wait for widget to build before accessing context
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final gestureController = Provider.of<GestureController>(context, listen: false);
 
       gestureController.addListener(() {
-        if (gestureController.isFistOpened && widget.incomingPayload != null) {
+        if (!hasHandled &&
+            gestureController.isFistOpened &&
+            widget.incomingPayload != null) {
           final data = PairingManager.parsePayload(widget.incomingPayload!);
           if (data != null) {
             setState(() {
               isFileIncoming = true;
+              hasHandled = true;
             });
 
-            // TODO: Trigger receive transfer
-            print("Receiving: ${data['fileName']}");
-            // Navigate or show UI
+            Future.delayed(Duration(seconds: 2), () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TransferProgressScreen(
+                    file: File(data['filePath']),
+                  ),
+                ),
+              );
+            });
           } else {
             print("⚠️ Invalid payload. Ignored.");
           }
@@ -57,6 +70,36 @@ class _GestureScanScreenState extends State<GestureScanScreen> {
     super.dispose();
   }
 
+  Widget _buildOverlayText() {
+    return Positioned(
+      bottom: 80,
+      child: Column(
+        children: [
+          Text(
+            "📡 Scanning for sender...",
+            style: TextStyle(
+              color: Colors.cyanAccent,
+              fontSize: 18,
+              fontFamily: 'monospace',
+            ),
+          ),
+          if (isFileIncoming)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Text(
+                "Receiving file...",
+                style: TextStyle(
+                  color: Colors.greenAccent,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -65,18 +108,13 @@ class _GestureScanScreenState extends State<GestureScanScreen> {
         alignment: Alignment.center,
         children: [
           if (_controller.value.isInitialized)
-            AspectRatio(
-              aspectRatio: _controller.value.aspectRatio,
-              child: VideoPlayer(_controller),
-            ),
-          if (isFileIncoming)
-            Positioned(
-              bottom: 80,
-              child: Text(
-                "Receiving file...",
-                style: TextStyle(color: Colors.white, fontSize: 24),
+            Positioned.fill(
+              child: AspectRatio(
+                aspectRatio: _controller.value.aspectRatio,
+                child: VideoPlayer(_controller),
               ),
             ),
+          _buildOverlayText(),
         ],
       ),
     );
