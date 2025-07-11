@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'package:lottie/lottie.dart';
-import '../widgets/animated_file_tile.dart';
+import '../widgets/crunching_file_tile.dart';
 
 class FileManagerScreen extends StatefulWidget {
   @override
@@ -10,7 +9,7 @@ class FileManagerScreen extends StatefulWidget {
 }
 
 class _FileManagerScreenState extends State<FileManagerScreen> {
-  List<FileSystemEntity> selectedFiles = [];
+  List<File> selectedFiles = [];
 
   Future<void> _pickFiles() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(allowMultiple: true);
@@ -25,9 +24,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return ListView.builder(
       itemCount: selectedFiles.length,
       itemBuilder: (context, index) {
-        return AnimatedFileTile(
+        return CrunchingFileTile(
           file: selectedFiles[index],
-          animationPath: 'assets/animations/crunch_animation.json',
+          onCrunchComplete: () {
+            // File is now visually 'locked' (you can prepare it for sending here)
+            print("Crunched: ${selectedFiles[index].path}");
+          },
         );
       },
     );
@@ -37,19 +39,47 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(title: Text("Select Files"), backgroundColor: Colors.transparent),
+      appBar: AppBar(
+        title: Text("Select Files"),
+        backgroundColor: Colors.black,
+        elevation: 0,
+      ),
       body: Column(
         children: [
-          ElevatedButton(
-            onPressed: _pickFiles,
-            child: Text("Browse Files"),
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.greenAccent,
+                foregroundColor: Colors.black,
+              ),
+              onPressed: _pickFiles,
+              child: Text("📂 Browse Files"),
+            ),
           ),
           Expanded(
             child: selectedFiles.isEmpty
-                ? Center(child: Text("No files selected", style: TextStyle(color: Colors.white70)))
+                ? Center(
+                    child: Text(
+                      "No files selected",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  )
                 : buildFileList(),
           ),
-          ElevatedButton(onPressed: () {}, child: Text("Send Files"))
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.cyanAccent,
+                foregroundColor: Colors.black,
+              ),
+              onPressed: () {
+                // You can trigger send logic here
+              },
+              child: Text("🚀 Send Files"),
+            ),
+          )
         ],
       ),
     );
