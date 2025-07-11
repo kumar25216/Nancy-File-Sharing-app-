@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'package:provider/provider.dart';
 import '../widgets/crunching_file_tile.dart';
+import '../controllers/gesture_controller.dart';
+import '../services/socket_server.dart';
 
 class FileManagerScreen extends StatefulWidget {
   @override
@@ -10,14 +13,40 @@ class FileManagerScreen extends StatefulWidget {
 
 class _FileManagerScreenState extends State<FileManagerScreen> {
   List<File> selectedFiles = [];
+  bool serverStarted = false;
 
   Future<void> _pickFiles() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(allowMultiple: true);
+    FilePickerResult? result =
+        await FilePicker.platform.pickFiles(allowMultiple: true);
     if (result != null) {
       setState(() {
         selectedFiles = result.paths.map((e) => File(e!)).toList();
       });
     }
+  }
+
+  void _startSending(File file) async {
+    if (serverStarted) return;
+    serverStarted = true;
+    final server = SocketServer(port: 8989, fileToSend: file);
+    await server.startServer();
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('📡 Sharing started on hotspot... waiting for receiver'),
+    ));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final gestureController = Provider.of<GestureController>(context);
+
+    gestureController.addListener(() {
+      if (gestureController.isFistClosed && selectedFiles.isNotEmpty) {
+        print("🤜 Fist Closed → Start sending");
+        _startSending(selectedFiles.first); // Send first file for now
+      }
+    });
   }
 
   Widget buildFileList() {
@@ -27,8 +56,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         return CrunchingFileTile(
           file: selectedFiles[index],
           onCrunchComplete: () {
-            // File is now visually 'locked' (you can prepare it for sending here)
-            print("Crunched: ${selectedFiles[index].path}");
+            print("✅ Crunched: ${selectedFiles[index].path}");
           },
         );
       },
@@ -75,7 +103,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 foregroundColor: Colors.black,
               ),
               onPressed: () {
-                // You can trigger send logic here
+                if (selectedFiles.isNotEmpty) {
+                  _startSending(selectedFiles.first);
+                }
               },
               child: Text("🚀 Send Files"),
             ),
