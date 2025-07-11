@@ -3,8 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import '../controllers/gesture_controller.dart';
 import '../services/pairing_manager.dart';
-import 'transfer_progress_screen.dart';
-import 'dart:io';
+import '../services/socket_client.dart';
 
 class GestureScanScreen extends StatefulWidget {
   final String? incomingPayload;
@@ -24,37 +23,37 @@ class _GestureScanScreenState extends State<GestureScanScreen> {
   void initState() {
     super.initState();
 
-    _controller = VideoPlayerController.asset('assets/videos/waiting_receive.mp4')
-      ..initialize().then((_) {
-        setState(() {});
-        _controller.setLooping(true);
-        _controller.play();
-      });
+    _controller =
+        VideoPlayerController.asset('assets/videos/waiting_receive.mp4')
+          ..initialize().then((_) {
+            setState(() {});
+            _controller.setLooping(true);
+            _controller.play();
+          });
 
-    // Wait for widget to build before accessing context
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final gestureController = Provider.of<GestureController>(context, listen: false);
+      final gestureController =
+          Provider.of<GestureController>(context, listen: false);
 
       gestureController.addListener(() {
-        if (!hasHandled &&
-            gestureController.isFistOpened &&
-            widget.incomingPayload != null) {
-          final data = PairingManager.parsePayload(widget.incomingPayload!);
+        if (!hasHandled && gestureController.isFistOpened) {
+          hasHandled = true;
+
+          final data = widget.incomingPayload != null
+              ? PairingManager.parsePayload(widget.incomingPayload!)
+              : null;
+
           if (data != null) {
             setState(() {
               isFileIncoming = true;
-              hasHandled = true;
             });
 
-            Future.delayed(Duration(seconds: 2), () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => TransferProgressScreen(
-                    file: File(data['filePath']),
-                  ),
-                ),
-              );
+            // Use IP from payload (or default fallback)
+            final ip = data['senderIP'] ?? '192.168.1.3';
+
+            Future.delayed(Duration(seconds: 2), () async {
+              final client = SocketClient(serverIP: ip, serverPort: 8989);
+              await client.connectAndReceiveFile();
             });
           } else {
             print("⚠️ Invalid payload. Ignored.");
