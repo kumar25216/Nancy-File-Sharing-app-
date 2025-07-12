@@ -4,7 +4,7 @@ on:
   workflow_dispatch:  # ✅ Allows manual run from GitHub UI
   push:
     branches:
-      - main           # ✅ Also runs automatically on push to main
+      - main           # ✅ Auto-run when pushing to main
 
 jobs:
   build:
@@ -17,7 +17,11 @@ jobs:
       - name: ⚙️ Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.2'  # Or latest stable
+          flutter-version: '3.32.2'
+
+      - name: 🔐 Setup Git credentials for private dependencies
+        run: |
+          git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf https://github.com/
 
       - name: 📦 Install dependencies
         run: flutter pub get
