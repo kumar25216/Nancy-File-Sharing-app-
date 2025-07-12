@@ -1,6 +1,5 @@
 name: nancy_file_share
 description: A futuristic file sharing app with gesture and animation.
-
 publish_to: 'none' 
 version: 1.0.0+1
 
